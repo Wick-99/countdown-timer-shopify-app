@@ -12,7 +12,11 @@ export function Widget({ timer }) {
 	const isUrgent = remaining > 0 && remaining <= triggerMs;
 
 	const rootClass = useMemo(() => {
-		const classes = ["ct-root", `ct-root--${size || "medium"}`];
+		const classes = [
+			"ct-root",
+			`ct-root--${size || "medium"}`,
+			`ct-root--align-${timer.display?.position || "top"}`,
+		];
 		if (isUrgent) {
 			classes.push("ct-root--urgent");
 			if (urgencyType === "color_pulse") classes.push("ct-root--pulse");

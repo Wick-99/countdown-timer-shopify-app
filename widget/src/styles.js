@@ -9,9 +9,25 @@ export const styles = `
 }
 .ct-root * { box-sizing: border-box; }
 
-.ct-root--small { padding: 12px; font-size: 12px; }
-.ct-root--medium { padding: 16px; font-size: 14px; }
-.ct-root--large { padding: 24px; font-size: 18px; }
+.ct-root--align-top,
+.ct-root--align-bottom {
+  margin-left: auto;
+  margin-right: auto;
+}
+.ct-root--align-inline {
+  display: inline-block;
+  margin-left: 16px;
+  margin-right: 16px;
+}
+
+.ct-root--small { padding: 10px; font-size: 12px; max-width: 280px; }
+.ct-root--small .ct-time { font-size: 1.5em; }
+
+.ct-root--medium { padding: 18px; font-size: 15px; max-width: 420px; }
+.ct-root--medium .ct-time { font-size: 2em; }
+
+.ct-root--large { padding: 28px; font-size: 20px; max-width: 560px; }
+.ct-root--large .ct-time { font-size: 2.8em; }
 
 .ct-label {
   font-weight: 600;
