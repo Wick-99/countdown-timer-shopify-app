@@ -1,0 +1,34 @@
+{% comment %}
+  Countdown Timer block
+  Renders a container div. The widget.js bundle (shipped from this extension's
+  assets folder) reads the data attributes, fetches the active timer for this
+  shop + product, and mounts a Preact countdown if one exists.
+{% endcomment %}
+
+<div
+  id="countdown-timer-app-{{ block.id }}"
+  class="countdown-timer-root"
+  data-shop="{{ shop.permanent_domain }}"
+  data-product-id="{{ product.id }}"
+  data-api-url="{{ block.settings.api_url }}"
+  data-block-id="{{ block.id }}"
+  {{ block.shopify_attributes }}
+></div>
+
+<script src="{{ 'widget.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "Countdown Timer",
+  "target": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "api_url",
+      "label": "App backend URL",
+      "info": "The public HTTPS URL of the Countdown Timer app backend. Paste your Cloudflare tunnel URL during development.",
+      "default": "https://example.com"
+    }
+  ]
+}
+{% endschema %}
