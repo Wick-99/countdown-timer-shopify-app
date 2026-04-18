@@ -9,6 +9,7 @@ import productCreator from "./product-creator.js";
 import PrivacyWebhookHandlers from "./privacy.js";
 import { connectDB } from "./config/db.js";
 import timersRouter from "./routes/timers.js";
+import publicTimersRouter from "./routes/publicTimers.js";
 
 const PORT = parseInt(
 	process.env.BACKEND_PORT || process.env.PORT || "3000",
@@ -36,6 +37,8 @@ app.post(
 
 // If you are adding routes outside of the /api path, remember to
 // also add a proxy rule for them in web/frontend/vite.config.js
+
+app.use("/api/public", express.json(), publicTimersRouter);
 
 app.use("/api/*", shopify.validateAuthenticatedSession());
 
