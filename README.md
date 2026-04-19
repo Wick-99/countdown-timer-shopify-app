@@ -233,6 +233,6 @@ npm run build:widget
 ## Submission
 
 -  **GitHub repo:** https://github.com/Wick-99/countdown-timer-shopify-app
--  **Loom walkthrough:** https://share.vidyard.com/watch/9wKjtC4Q2Nu7nBxPZsXefR
+-  **Video Link:** https://share.vidyard.com/watch/9wKjtC4Q2Nu7nBxPZsXefR
 
 ---
