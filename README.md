@@ -1,242 +1,238 @@
-# Shopify App Template for Node
+# Countdown Timer — Shopify App
 
-This is a template for building a [Shopify app](https://shopify.dev/docs/apps/getting-started) using Node and React. It contains the basics for building a Shopify app.
+A Shopify app that lets merchants create and display countdown timers on their storefront to drive urgency for promotions and discounts.
 
-Rather than cloning this repo, you can use your preferred package manager and the Shopify CLI with [these steps](#installing-the-template).
+Built with the MERN stack (MongoDB, Express, React, Node.js) and Shopify CLI 3.0, per the project requirements document. The storefront widget uses Preact to keep the bundle small.
 
-## Benefits
+---
 
-Shopify apps are built on a variety of Shopify tools to create a great merchant experience. The [create an app](https://shopify.dev/docs/apps/getting-started/create) tutorial in our developer documentation will guide you through creating a Shopify app using this template.
+## What it does
 
-The Node app template comes with the following out-of-the-box functionality:
+-  **Admin panel (embedded in Shopify admin):** Merchants create, edit, search, sort, and delete countdown timers. Built with React + Polaris v13 components.
+-  **Storefront widget:** A Preact-based countdown bundled as a theme app extension. Merchants drop the block into their theme via the theme editor; it renders on the storefront and ticks down in real time.
+-  **Scheduled activation:** Timers automatically activate and deactivate based on start/end date-times. The widget only renders when a timer is within its active window.
+-  **Urgency notifications:** In the last N minutes (default 5) the widget either pulses (color pulse) or shows a banner, depending on the merchant's configuration.
+-  **Multi-tenant by design:** Every database query is scoped by shop domain. Multiple Shopify stores can install the app and their data stays completely isolated.
 
-- OAuth: Installing the app and granting permissions
-- GraphQL Admin API: Querying or mutating Shopify admin data
-- REST Admin API: Resource classes to interact with the API
-- Shopify-specific tooling:
-  - AppBridge
-  - Polaris
-  - Webhooks
+---
 
-## Tech Stack
+## Architecture
 
-This template combines a number of third party open-source tools:
-
-- [Express](https://expressjs.com/) builds the backend.
-- [Vite](https://vitejs.dev/) builds the [React](https://reactjs.org/) frontend.
-- [React Router](https://reactrouter.com/) is used for routing. We wrap this with file-based routing.
-- [React Query](https://react-query.tanstack.com/) queries the Admin API.
-- [`i18next`](https://www.i18next.com/) and related libraries are used to internationalize the frontend.
-  - [`react-i18next`](https://react.i18next.com/) is used for React-specific i18n functionality.
-  - [`i18next-resources-to-backend`](https://github.com/i18next/i18next-resources-to-backend) is used to dynamically load app translations.
-  - [`@formatjs/intl-localematcher`](https://formatjs.io/docs/polyfills/intl-localematcher/) is used to match the user locale with supported app locales.
-  - [`@formatjs/intl-locale`](https://formatjs.io/docs/polyfills/intl-locale) is used as a polyfill for [`Intl.Locale`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Locale) if necessary.
-  - [`@formatjs/intl-pluralrules`](https://formatjs.io/docs/polyfills/intl-pluralrules) is used as a polyfill for [`Intl.PluralRules`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/PluralRules) if necessary.
-
-The following Shopify tools complement these third-party tools to ease app development:
-
-- [Shopify API library](https://github.com/Shopify/shopify-node-api) adds OAuth to the Express backend. This lets users install the app and grant scope permissions.
-- [App Bridge React](https://shopify.dev/docs/apps/tools/app-bridge/getting-started/using-react) adds [authentication to API requests](https://shopify.dev/docs/api/app-bridge-library/apis/resource-fetching) in the frontend and renders components outside of the App’s iFrame.
-- [Polaris React](https://polaris.shopify.com/) is a powerful design system and component library that helps developers build high quality, consistent experiences for Shopify merchants.
-- [File-based routing](https://github.com/Shopify/shopify-frontend-template-react/blob/main/Routes.jsx) makes creating new pages easier.
-- [`@shopify/i18next-shopify`](https://github.com/Shopify/i18next-shopify) is a plugin for [`i18next`](https://www.i18next.com/) that allows translation files to follow the same JSON schema used by Shopify [app extensions](https://shopify.dev/docs/apps/checkout/best-practices/localizing-ui-extensions#how-it-works) and [themes](https://shopify.dev/docs/themes/architecture/locales/storefront-locale-files#usage).
-
-## Getting started
-
-### Requirements
-
-1. You must [download and install Node.js](https://nodejs.org/en/download/) if you don't already have it.
-1. You must [create a Shopify partner account](https://partners.shopify.com/signup) if you don’t have one.
-1. You must create a store for testing if you don't have one, either a [development store](https://help.shopify.com/en/partners/dashboard/development-stores#create-a-development-store) or a [Shopify Plus sandbox store](https://help.shopify.com/en/partners/dashboard/managing-stores/plus-sandbox-store).
-
-### Installing the template
-
-This template can be installed using your preferred package manager:
-
-Using yarn:
-
-```shell
-yarn create @shopify/app --template=node
+```
+┌─────────────────────────────┐
+│  Shopify Admin (embedded)   │
+│  React + Polaris v13        │  Merchants manage timers here
+└──────────────┬──────────────┘
+               │ authenticated fetch (App Bridge session token)
+               ▼
+┌─────────────────────────────┐        ┌──────────────┐
+│  Node + Express server      │ ◄────► │  MongoDB     │
+│  - OAuth via Shopify CLI    │        │  Atlas       │
+│  - Authenticated CRUD       │        │              │
+│  - Public widget endpoint   │        │  Collections:│
+│  - MongoDB session storage  │        │  - sessions  │
+└──────────────▲──────────────┘        │  - timers    │
+               │                       └──────────────┘
+               │ unauthenticated fetch (CORS open, shop param)
+               │
+┌──────────────┴──────────────┐
+│  Preact widget (IIFE)       │
+│  ~16 KB minified            │
+│  Loaded by theme app        │
+│  extension block on         │
+│  storefront pages           │
+└─────────────────────────────┘
 ```
 
-Using npm:
+### Three-part app structure
 
-```shell
-npm init @shopify/app@latest -- --template=node
+| Part              | Folder                                    | Stack                                                  |
+| ----------------- | ----------------------------------------- | ------------------------------------------------------ | ------ |
+| Backend           | `web/`                                    | Node, Express, Mongoose, Shopify API library           |
+| Admin UI          | `web/frontend/`                           | React 18, Vite, Polaris v13, App Bridge                |
+| Storefront widget | `widget/` + `extensions/countdown-timer/` | Preact 10, esbuild, Liquid (~17 KB min, ~6 KB gzipped) | Liquid |
+
+### Data model
+
+**`timers` collection** (Mongoose schema in `web/models/Timer.js`):
+
+```js
+{
+  shop: String (indexed),         // tenancy key — every query filters by this
+  name: String,
+  startAt: Date,
+  endAt: Date,
+  promotionDescription: String,
+  display: { color, size, position },
+  urgency: { type, triggerMinutes },
+  scope: { type, productIds },
+  enabled: Boolean,
+  timestamps: true                // createdAt, updatedAt
+}
 ```
 
-Using pnpm:
+Compound index on `{ shop, enabled, startAt, endAt }` for fast active-timer queries.
 
-```shell
-pnpm create @shopify/app@latest --template=node
+**`shopify_sessions` collection** managed by `@shopify/shopify-app-session-storage-mongodb`.
+
+### API surface
+
+| Route                           | Auth            | Purpose                                               |
+| ------------------------------- | --------------- | ----------------------------------------------------- |
+| `GET /api/timers`               | Session (admin) | List timers for current shop                          |
+| `POST /api/timers`              | Session (admin) | Create a timer                                        |
+| `GET /api/timers/:id`           | Session (admin) | Read single timer                                     |
+| `PUT /api/timers/:id`           | Session (admin) | Update timer                                          |
+| `DELETE /api/timers/:id`        | Session (admin) | Delete timer                                          |
+| `GET /api/public/timers/active` | Public + CORS   | Return currently-active timer for `?shop=&productId=` |
+
+The public endpoint is mounted **before** `validateAuthenticatedSession` so it bypasses Shopify's session middleware.
+
+---
+
+## Prerequisites
+
+-  Node.js 18+ (developed on v22)
+-  [MongoDB Atlas](https://cloud.mongodb.com) free-tier cluster, or local MongoDB
+-  [Shopify Partners account](https://partners.shopify.com)
+-  Shopify CLI 3.x installed globally (`npm install -g @shopify/cli@latest`)
+-  A Shopify development store with a few test products
+
+---
+
+## Setup
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/Wick-99/countdown-timer-shopify-app.git
+cd countdown-timer-shopify-app
+npm install
 ```
 
-This will clone the template and install the required dependencies.
+### 2. Configure environment variables
 
-#### Local Development
-
-[The Shopify CLI](https://shopify.dev/docs/apps/tools/cli) connects to an app in your Partners dashboard. It provides environment variables, runs commands in parallel, and updates application URLs for easier development.
-
-You can develop locally using your preferred package manager. Run one of the following commands from the root of your app.
-
-Using yarn:
-
-```shell
-yarn dev
+```bash
+cp .env.example .env
 ```
 
-Using npm:
+Edit `.env` and paste your MongoDB Atlas connection string. Make sure the URI includes `/countdown_timer` before the query parameters:
 
-```shell
-npm run dev
+```
+MONGODB_URI=mongodb+srv://user:pass@cluster0.xxx.mongodb.net/countdown_timer?retryWrites=true&w=majority&appName=Cluster0
 ```
 
-Using pnpm:
+### 3. Build the widget bundle
 
-```shell
-pnpm run dev
+```bash
+npm run build:widget
 ```
 
-Open the URL generated in your console. Once you grant permission to the app, you can start development.
+Produces `extensions/countdown-timer/assets/widget.js` (~16 KB minified Preact IIFE).
 
-## Deployment
+### 4. Start the dev server
 
-### Application Storage
-
-This template uses [SQLite](https://www.sqlite.org/index.html) to store session data. The database is a file called `database.sqlite` which is automatically created in the root. This use of SQLite works in production if your app runs as a single instance.
-
-The database that works best for you depends on the data your app needs and how it is queried. You can run your database of choice on a server yourself or host it with a SaaS company. Here’s a short list of databases providers that provide a free tier to get started:
-
-| Database   | Type             | Hosters                                                                                                                                                                                                                               |
-| ---------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| MySQL      | SQL              | [Digital Ocean](https://www.digitalocean.com/try/managed-databases-mysql), [Planet Scale](https://planetscale.com/), [Amazon Aurora](https://aws.amazon.com/rds/aurora/), [Google Cloud SQL](https://cloud.google.com/sql/docs/mysql) |
-| PostgreSQL | SQL              | [Digital Ocean](https://www.digitalocean.com/try/managed-databases-postgresql), [Amazon Aurora](https://aws.amazon.com/rds/aurora/), [Google Cloud SQL](https://cloud.google.com/sql/docs/postgres)                                   |
-| Redis      | Key-value        | [Digital Ocean](https://www.digitalocean.com/try/managed-databases-redis), [Amazon MemoryDB](https://aws.amazon.com/memorydb/)                                                                                                        |
-| MongoDB    | NoSQL / Document | [Digital Ocean](https://www.digitalocean.com/try/managed-databases-mongodb), [MongoDB Atlas](https://www.mongodb.com/atlas/database)                                                                                                  |
-
-To use one of these, you need to change your session storage configuration. To help, here’s a list of [SessionStorage adapter packages](https://github.com/Shopify/shopify-api-js/blob/main/packages/shopify-api/docs/guides/session-storage.md).
-
-### Build
-
-The frontend is a single page app. It requires the `SHOPIFY_API_KEY`, which you can find on the page for your app in your partners dashboard. Paste your app’s key in the command for the package manager of your choice:
-
-Using yarn:
-
-```shell
-cd web/frontend/ && SHOPIFY_API_KEY=REPLACE_ME yarn build
+```bash
+shopify app dev
 ```
 
-Using npm:
+The Shopify CLI prompts you to select a Partners org and development store on first run, creates the app in the Dev Dashboard, starts the Cloudflare tunnel, and launches:
 
-```shell
-cd web/frontend/ && SHOPIFY_API_KEY=REPLACE_ME npm run build
+-  Express backend (with MongoDB session storage)
+-  Vite dev server for the React admin
+-  Theme app extension bundler
+-  GraphiQL admin API explorer
+
+When it shows `✅ Ready, watching for changes in your app`, press **`p`** to open the app in your dev store's admin.
+
+### 5. Add the block to your storefront theme
+
+1. Shopify admin → **Online Store → Themes** → **Customize**
+2. Navigate to a product page or home page
+3. **Add section → Apps → Countdown Timer**
+4. Click **Save**
+
+The storefront will now show any currently-active timers.
+
+---
+
+## Design decisions
+
+### Why Preact, not React, for the widget?
+
+The PRD specifies Preact. Beyond that — Preact is ~4 KB gzipped vs React's ~45 KB. On a storefront that runs on customers' devices, every KB matters. Using the same React bundle the admin uses would inflate the widget by an order of magnitude for no functional benefit.
+
+### Why a theme app extension instead of ScriptTag API?
+
+The PRD says "make use of the theme app extension." The theme extension approach also gives merchants explicit control over where the widget appears (via theme editor block placement) and gracefully handles app uninstall (the block simply hides).
+
+### Why MongoDB for session storage, not just timers?
+
+Keeps the whole data layer in one place. The reviewer can open Atlas or Compass and see both sessions and timers scoped by shop — easier to verify tenancy at a glance.
+
+### Why an auto-fallback to the script-src origin for the widget's API URL?
+
+During development the Cloudflare tunnel URL changes every `shopify app dev` restart. Forcing the merchant to paste a fresh URL into the theme editor's block settings each time is painful. The widget reads the origin of its own script tag (always fresh because `{{ 'widget.js' | asset_url }}` is re-rendered per request) as a fallback.
+
+---
+
+## Project structure
+
+```
+countdown-timer-app/
+├── extensions/countdown-timer/       Theme app extension
+│   ├── blocks/countdown-timer.liquid
+│   └── assets/widget.js              (generated by widget build)
+├── web/                              Node + Express backend
+│   ├── index.js                      Express entry
+│   ├── shopify.js                    Shopify API + Mongo session storage
+│   ├── config/db.js                  Mongoose connection
+│   ├── models/Timer.js
+│   ├── routes/
+│   │   ├── timers.js                 Authenticated CRUD
+│   │   └── publicTimers.js           Unauthenticated widget API
+│   ├── middleware/validateTimer.js
+│   └── frontend/                     React admin (Vite + Polaris v13)
+│       ├── pages/index.jsx           Timer Manager home
+│       ├── components/
+│       │   ├── TimerCard.jsx
+│       │   ├── TimerFormModal.jsx
+│       │   ├── TimerEmptyState.jsx
+│       │   └── DeleteConfirmModal.jsx
+│       └── hooks/useTimerApi.js
+├── widget/                           Preact storefront widget (separate workspace)
+│   ├── src/
+│   │   ├── index.jsx                 Entry + script-origin fallback
+│   │   ├── Widget.jsx                Layout + urgency logic
+│   │   ├── Countdown.jsx             Tick loop
+│   │   ├── UrgencyBanner.jsx
+│   │   ├── api.js
+│   │   └── styles.js
+│   └── build.mjs                     esbuild IIFE bundler
+├── docs/screenshots/                 Screenshots referenced here and in Loom
+├── .env.example
+├── shopify.app.toml                  Shopify CLI app config
+└── README.md
 ```
 
-Using pnpm:
+---
 
-```shell
-cd web/frontend/ && SHOPIFY_API_KEY=REPLACE_ME pnpm run build
+## Useful commands
+
+```bash
+# Start dev server (backend + frontend + extension)
+shopify app dev
+
+# Build the storefront widget bundle
+npm run build:widget
+
 ```
 
-You do not need to build the backend.
+---
 
-## Hosting
+## Submission
 
-When you're ready to set up your app in production, you can follow [our deployment documentation](https://shopify.dev/docs/apps/deployment/web) to host your app on a cloud provider like [Heroku](https://www.heroku.com/) or [Fly.io](https://fly.io/).
+-  **GitHub repo:** https://github.com/Wick-99/countdown-timer-shopify-app
+-  **Loom walkthrough:** (link will be added here)
 
-When you reach the step for [setting up environment variables](https://shopify.dev/docs/apps/deployment/web#set-env-vars), you also need to set the variable `NODE_ENV=production`.
-
-## Known issues
-
-### Hot module replacement and Firefox
-
-When running the app with the CLI in development mode on Firefox, you might see your app constantly reloading when you access it.
-That happened in previous versions of the CLI, because of the way HMR websocket requests work.
-
-We fixed this issue with v3.4.0 of the CLI, so after updating it, you can make the following changes to your app's `web/frontend/vite.config.js` file:
-
-1. Change the definition `hmrConfig` object to be:
-
-   ```js
-   const host = process.env.HOST
-     ? process.env.HOST.replace(/https?:\/\//, "")
-     : "localhost";
-
-   let hmrConfig;
-   if (host === "localhost") {
-     hmrConfig = {
-       protocol: "ws",
-       host: "localhost",
-       port: 64999,
-       clientPort: 64999,
-     };
-   } else {
-     hmrConfig = {
-       protocol: "wss",
-       host: host,
-       port: process.env.FRONTEND_PORT,
-       clientPort: 443,
-     };
-   }
-   ```
-
-1. Change the `server.host` setting in the configs to `"localhost"`:
-
-   ```js
-   server: {
-     host: "localhost",
-     ...
-   ```
-
-### I can't get past the ngrok "Visit site" page
-
-When you’re previewing your app or extension, you might see an ngrok interstitial page with a warning:
-
-```text
-You are about to visit <id>.ngrok.io: Visit Site
-```
-
-If you click the `Visit Site` button, but continue to see this page, then you should run dev using an alternate tunnel URL that you run using tunneling software.
-We've validated that [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/run-tunnel/trycloudflare/) works with this template.
-
-To do that, you can [install the `cloudflared` CLI tool](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/), and run:
-
-```shell
-# Note that you can also use a different port
-cloudflared tunnel --url http://localhost:3000
-```
-
-Out of the logs produced by cloudflare you will notice a https URL where the domain ends with `trycloudflare.com`. This is your tunnel URL. You need to copy this URL as you will need it in the next step.
-
-```shell
-2022-11-11T19:57:55Z INF Requesting new quick Tunnel on trycloudflare.com...
-2022-11-11T19:57:58Z INF +--------------------------------------------------------------------------------------------+
-2022-11-11T19:57:58Z INF |  Your quick Tunnel has been created! Visit it at (it may take some time to be reachable):  |
-2022-11-11T19:57:58Z INF |  https://randomly-generated-hostname.trycloudflare.com                                     |
-2022-11-11T19:57:58Z INF +--------------------------------------------------------------------------------------------+
-```
-
-Below you would replace `randomly-generated-hostname` with what you have copied from the terminal. In a different terminal window, navigate to your app's root and with the URL from above you would call:
-
-```shell
-# Using yarn
-yarn dev --tunnel-url https://randomly-generated-hostname.trycloudflare.com:3000
-# or using npm
-npm run dev --tunnel-url https://randomly-generated-hostname.trycloudflare.com:3000
-# or using pnpm
-pnpm dev --tunnel-url https://randomly-generated-hostname.trycloudflare.com:3000
-```
-
-## Developer resources
-
-- [Introduction to Shopify apps](https://shopify.dev/docs/apps/getting-started)
-- [App authentication](https://shopify.dev/docs/apps/auth)
-- [Shopify CLI](https://shopify.dev/docs/apps/tools/cli)
-- [Shopify API Library documentation](https://github.com/Shopify/shopify-api-js#readme)
-- [Getting started with internationalizing your app](https://shopify.dev/docs/apps/best-practices/internationalization/getting-started)
-  - [i18next](https://www.i18next.com/)
-    - [Configuration options](https://www.i18next.com/overview/configuration-options)
-  - [react-i18next](https://react.i18next.com/)
-    - [`useTranslation` hook](https://react.i18next.com/latest/usetranslation-hook)
-    - [`Trans` component usage with components array](https://react.i18next.com/latest/trans-component#alternative-usage-components-array)
-  - [i18n-ally VS Code extension](https://marketplace.visualstudio.com/items?itemName=Lokalise.i18n-ally)
+---
